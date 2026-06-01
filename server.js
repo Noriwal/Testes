@@ -6,7 +6,10 @@ const cors = require('cors');
 const db = require('./database');
 
 const app = express();
-app.use(cors());
+// app.use(cors());
+app.use(cors({
+  origin: ['https://testes-bxae.onrender.com']
+}));
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
