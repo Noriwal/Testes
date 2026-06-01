@@ -1,0 +1,117 @@
+{
+  "name": "Nexus - Cadastro e Notificações",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cadastro",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "cadastro"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recebe os dados do back end\nconst data = $input.first().json.body;\nreturn [{ json: data }];"
+      },
+      "id": "code-1",
+      "name": "Processar Dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "user_registered",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-1",
+      "name": "É Cadastro?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ $json.data.email }}",
+        "subject": "🎉 Bem-vindo ao Nexus, {{ $json.data.name }}!",
+        "message": "Olá {{ $json.data.name }}!\n\nSeu cadastro foi realizado com sucesso em nossa plataforma.\n\nAgora você pode:\n- Participar do fórum exclusivo\n- Comprar produtos digitais e físicos\n- Gerenciar seus dados conforme a LGPD\n\nAtenciosamente,\nEquipe Nexus",
+        "options": {}
+      },
+      "id": "email-1",
+      "name": "Enviar E-mail",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log no console do n8n\nconst data = $input.first().json;\nconsole.log(`Novo usuário: ${data.data.name} (${data.data.email})`);\nreturn [{ json: { logged: true } }];"
+      },
+      "id": "code-2",
+      "name": "Log Console",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\":\"recebido\",\"event\":\"{{ $json.event }}\"}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Processar Dados", "type": "main", "index": 0}]]
+    },
+    "Processar Dados": {
+      "main": [[{"node": "É Cadastro?", "type": "main", "index": 0}]]
+    },
+    "É Cadastro?": {
+      "main": [
+        [{"node": "Enviar E-mail", "type": "main", "index": 0}],
+        [{"node": "Log Console", "type": "main", "index": 0}]
+      ]
+    },
+    "Enviar E-mail": {
+      "main": [[{"node": "Responder OK", "type": "main", "index": 0}]]
+    },
+    "Log Console": {
+      "main": [[{"node": "Responder OK", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": []
+}

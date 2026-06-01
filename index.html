@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus - Plataforma Integrada</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #ec4899;
+            --bg: #0f0f23;
+            --surface: #1a1a2e;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: rgba(255,255,255,0.1);
+            --gradient: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 5%;
+            background: rgba(15,15,35,0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-size: 1.5rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--text);
+        }
+
+        .btn {
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--gradient);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 6rem 5% 4rem;
+        }
+
+        .section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .checkbox-group input {
+            width: auto;
+            margin-top: 0.3rem;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .error {
+            color: #ef4444;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .success {
+            color: #22c55e;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .product-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: transform 0.3s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+
+        .product-type {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: var(--gradient);
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 1rem 0;
+        }
+
+        .forum-post {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast.success { border-color: #22c55e; }
+        .toast.error { border-color: #ef4444; }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            border-bottom-color: var(--primary);
+            color: var(--text);
+        }
+
+        .tab:hover {
+            color: var(--text);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            background: rgba(34,197,94,0.2);
+            color: #22c55e;
+            border-radius: 50px;
+            font-size: 0.8rem;
+        }
+
+        .badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: #22c55e;
+            border-radius: 50%;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<<nav>
+    <div class="logo">◆ NEXUS</div>
+    <ul class="nav-links">
+        <li><a onclick="showSection('home')" class="active">Início</a></li>
+        <li><a onclick="showSection('loja')">Loja</a></li>
+        <li><a onclick="showSection('forum')">Fórum</a></li>
+        <li id="nav-profile" class="hidden"><a onclick="showSection('perfil')">Meu Perfil</a></li>
+        <li id="nav-login"><a onclick="showSection('login')">Entrar</a></li>
+        <li id="nav-logout" class="hidden"><a onclick="logout()">Sair</a></li>
+    </ul>
+</nav>
+
+<div class="container">
+
+    <!-- HOME -->
+    <section id="home" class="section active">
+        <div style="text-align: center; padding: 4rem 0;">
+            <h1 style="font-size: 3rem; font-weight: 800; margin-bottom: 1rem;">
+                Bem-vindo ao <span style="background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Nexus</span>
+            </h1>
+            <p style="color: var(--text-muted); font-size: 1.2rem; max-width: 600px; margin: 0 auto 2rem;">
+                Cadastre-se, participe do fórum exclusivo e adquira produtos digitais e físicos.
+            </p>
+            <button class="btn btn-primary" onclick="showSection('cadastro')">Criar Conta</button>
+            <button class="btn btn-outline" onclick="showSection('loja')" style="margin-left: 1rem;">Ver Loja</button>
+        </div>
+    </section>
+
+    <!-- CADASTRO -->
+    <section id="cadastro" class="section">
+        <div class="card" style="max-width: 500px; margin: 0 auto;">
+            <h2 style="margin-bottom: 1.5rem;">Criar Conta</h2>
+            <form id="form-cadastro">
+                <div class="form-group">
+                    <label>Nome completo</label>
+                    <input type="text" id="cad-nome" required>
+                </div>
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" id="cad-email" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="cad-senha" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label>CPF (opcional)</label>
+                    <input type="text" id="cad-cpf" placeholder="123.456.789-00">
+                </div>
+                <div class="form-group">
+                    <label>Telefone (opcional)</label>
+                    <input type="text" id="cad-phone" placeholder="(11) 99999-9999">
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="cad-lgpd" required>
+                    <label for="cad-lgpd">
+                        Concordo com a <strong>Política de Privacidade</strong> e autorizo o tratamento dos meus dados pessoais conforme a LGPD. Sei que posso solicitar a exclusão da minha conta a qualquer momento.
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Cadastrar
+                </button>
+                <div id="cad-msg"></div>
+                <p style="text-align: center; margin-top: 1rem; color: var(--text-muted);">
+                    Já tem conta? <a onclick="showSection('login')" style="color: var(--primary); cursor: pointer;">Entrar</a>
+                </p>
+            </form>
+        </div>
+    </section>
+
+    <!-- LOGIN -->
+    <section id="login" class="section">
+        <div class="card" style="max-width: 400px; margin: 0 auto;">
+            <h2 style="margin-bottom: 1.5rem;">Entrar</h2>
+            <form id="form-login">
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="login-senha" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Entrar
+                </button>
+                <div id="login-msg"></div>
+                <p style="text-align: center; margin-top: 1rem; color: var(--text-muted);">
+                    Não tem conta? <a onclick="showSection('cadastro')" style="color: var(--primary); cursor: pointer;">Cadastrar</a>
+                </p>
+            </form>
+        </div>
+    </section>
+
+    <!-- LOJA -->
+    <section id="loja" class="section">
+        <h2 style="margin-bottom: 2rem;">Loja</h2>
+        <div id="lista-produtos" class="grid">
+            <div class="card" style="text-align: center; padding: 3rem;">
+                <div class="spinner"></div>
+                <p style="margin-top: 1rem; color: var(--text-muted);">Carregando produtos...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FÓRUM -->
+    <section id="forum" class="section">
+        <h2 style="margin-bottom: 2rem;">Fórum</h2>
+        
+        <div id="forum-criar" class="hidden">
+            <div class="card" style="margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 1rem;">Novo Tópico</h3>
+                <form id="form-post">
+                    <div class="form-group">
+                        <label>Título</label>
+                        <input type="text" id="post-titulo" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Conteúdo</label>
+                        <textarea id="post-conteudo" rows="4" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Publicar</button>
+                    <div id="post-msg"></div>
+                </form>
+            </div>
+        </div>
+
+        <div id="lista-posts">
+            <div class="card" style="text-align: center; padding: 3rem;">
+                <div class="spinner"></div>
+                <p style="margin-top: 1rem; color: var(--text-muted);">Carregando posts...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- PERFIL -->
+    <section id="perfil" class="section">
+        <div class="card">
+            <div class="profile-header">
+                <div class="avatar" id="perfil-avatar">U</div>
+                <div>
+                    <h2 id="perfil-nome">Usuário</h2>
+                    <p id="perfil-email" style="color: var(--text-muted);">email@exemplo.com</p>
+                    <span class="badge" style="margin-top: 0.5rem;">Conta Verificada</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('meus-pedidos')">Meus Pedidos</div>
+            <div class="tab" onclick="showTab('lgpd')">Privacidade (LGPD)</div>
+        </div>
+
+        <div id="meus-pedidos" class="tab-content">
+            <div id="lista-pedidos">
+                <p style="color: var(--text-muted);">Carregando pedidos...</p>
+            </div>
+        </div>
+
+        <div id="lgpd" class="tab-content hidden">
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">Exportar Meus Dados</h3>
+                <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                    Conforme a LGPD, você tem direito a receber uma cópia de todos os dados que mantemos sobre você.
+                </p>
+                <button class="btn btn-outline" onclick="exportarDados()">📥 Baixar JSON</button>
+                <div id="export-msg"></div>
+            </div>
+
+            <div class="card" style="margin-top: 1.5rem; border-color: #ef4444;">
+                <h3 style="margin-bottom: 1rem; color: #ef4444;">Excluir Conta</h3>
+                <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                    Esta ação é irreversível. Seus posts serão anonimizados e seus dados pessoais serão removidos.
+                </p>
+                <div class="form-group">
+                    <label>Senha atual (para confirmar)</label>
+                    <input type="password" id="delete-senha" placeholder="Digite sua senha">
+                </div>
+                <button class="btn btn-outline" onclick="excluirConta()" style="border-color: #ef4444; color: #ef4444;">
+                    Excluir permanentemente
+                </button>
+                <div id="delete-msg"></div>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
