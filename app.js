@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000'; // Troque pela URL do Render quando hospedar
+const API_URL = 'https://testes-backend-p9px.onrender.com'; // Troque pela URL do Render quando hospedar
 
 let token = localStorage.getItem('token') || null;
 let user = null;
