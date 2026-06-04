@@ -351,6 +351,60 @@ async function excluirConta() {
         document.getElementById('delete-msg').innerHTML = `<p class="error">Erro</p>`;
     }
 }
+// Recuperar senha
+document.getElementById('form-recuperar')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('rec-email').value;
+  
+  try {
+    const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const result = await res.json();
+    
+    document.getElementById('rec-msg').innerHTML = `<p class="success">${result.message}</p>`;
+  } catch (err) {
+    document.getElementById('rec-msg').innerHTML = `<p class="error">Erro</p>`;
+  }
+});
 
+// Resetar senha (quando vem da URL com token)
+document.getElementById('form-reset')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  
+  if (!token) {
+    document.getElementById('reset-msg').innerHTML = `<p class="error">Token inválido</p>`;
+    return;
+  }
+  
+  const newPassword = document.getElementById('reset-senha').value;
+  
+  try {
+    const res = await fetch(`${API_URL}/api/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    });
+    const result = await res.json();
+    
+    if (res.ok) {
+      document.getElementById('reset-msg').innerHTML = `<p class="success">${result.message}</p>`;
+      setTimeout(() => showSection('login'), 2000);
+    } else {
+      document.getElementById('reset-msg').innerHTML = `<p class="error">${result.error}</p>`;
+    }
+  } catch (err) {
+    document.getElementById('reset-msg').innerHTML = `<p class="error">Erro</p>`;
+  }
+});
+
+// Verificar se entrou com token na URL (reset de senha)
+if (window.location.search.includes('token=')) {
+  showSection('reset-senha');
+}
 // Inicializa
 checkAuth();
