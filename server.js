@@ -446,6 +446,306 @@ app.post('/api/auth/reset-password', async (req, res) => {
   );
 });
 
+// Listar comentários de um post (com respostas aninhadas)
+app.get('/api/forum/posts/:id/comments', (req, res) => {
+  const postId = req.params.id;
+  
+  db.all(
+    `SELECT c.*, u.name as author_name 
+     FROM comments c 
+     LEFT JOIN users u ON c.user_id = u.id 
+     WHERE c.post_id = ? 
+     ORDER BY c.created_at ASC`,
+    [postId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Erro ao buscar comentários' });
+      
+      // Organiza em árvore (comentários principais + respostas)
+      const map = {};
+      const roots = [];
+      rows.forEach(c => {
+        c.replies = [];
+        map[c.id] = c;
+        if (c.parent_id) {
+          if (map[c.parent_id]) map[c.parent_id].replies.push(c);
+        } else {
+          roots.push(c);
+        }
+      });
+      res.json(roots);
+    }
+  );
+});
+
+// Criar comentário ou resposta
+app.post('/api/forum/posts/:id/comments', authMiddleware, (req, res) => {
+  const postId = req.params.id;
+  const { content, parent_id } = req.body;
+
+  if (!content) return res.status(400).json({ error: 'Conteúdo obrigatório' });
+
+  db.run(
+    'INSERT INTO comments (post_id, user_id, parent_id, content) VALUES (?, ?, ?, ?)',
+    [postId, req.userId, parent_id || null, content],
+    async function(err) {
+      if (err) return res.status(500).json({ error: 'Erro ao comentar' });
+      
+      await triggerN8n('new_comment', {
+        commentId: this.lastID,
+        postId: postId,
+        userId: req.userId,
+        userName: req.userName,
+        isReply: !!parent_id
+      });
+
+      res.status(201).json({ message: 'Comentário adicionado', commentId: this.lastID });
+    }
+  );
+});
+
+// Listar avaliações de um produto
+app.get('/api/products/:id/reviews', (req, res) => {
+  db.all(
+    `SELECT r.*, u.name as author_name 
+     FROM reviews r 
+     LEFT JOIN users u ON r.user_id = u.id 
+     WHERE r.product_id = ? 
+     ORDER BY r.created_at DESC`,
+    [req.params.id],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Erro' });
+      res.json(rows);
+    }
+  );
+});
+
+// Média de avaliações
+app.get('/api/products/:id/rating', (req, res) => {
+  db.get(
+    'SELECT AVG(rating) as avg, COUNT(*) as total FROM reviews WHERE product_id = ?',
+    [req.params.id],
+    (err, row) => {
+      if (err) return res.status(500).json({ error: 'Erro' });
+      res.json({ average: Math.round(row.avg || 0), total: row.total });
+    }
+  );
+});
+
+// Criar avaliação (só quem comprou pode avaliar - simplificado: qualquer logado)
+app.post('/api/products/:id/reviews', authMiddleware, (req, res) => {
+  const { rating, comment } = req.body;
+  const productId = req.params.id;
+
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'Nota de 1 a 5 obrigatória' });
+  }
+
+  db.run(
+    'INSERT INTO reviews (product_id, user_id, rating, comment) VALUES (?, ?, ?, ?)',
+    [productId, req.userId, rating, comment || null],
+    function(err) {
+      if (err) return res.status(500).json({ error: 'Erro ao avaliar' });
+      res.status(201).json({ message: 'Avaliação enviada' });
+    }
+  );
+});
+
+// Meu carrinho
+app.get('/api/cart', authMiddleware, (req, res) => {
+  db.all(
+    `SELECT c.*, p.name, p.price, p.type, p.stock 
+     FROM cart c 
+     JOIN products p ON c.product_id = p.id 
+     WHERE c.user_id = ?`,
+    [req.userId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Erro' });
+      const total = rows.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      res.json({ items: rows, total });
+    }
+  );
+});
+
+// Adicionar ao carrinho
+app.post('/api/cart', authMiddleware, (req, res) => {
+  const { product_id, quantity } = req.body;
+  const qtd = quantity || 1;
+
+  db.get('SELECT stock FROM products WHERE id = ?', [product_id], (err, product) => {
+    if (err || !product) return res.status(404).json({ error: 'Produto não encontrado' });
+
+    // Verifica se já existe no carrinho
+    db.get('SELECT * FROM cart WHERE user_id = ? AND product_id = ?', [req.userId, product_id], (err, existing) => {
+      if (existing) {
+        const newQtd = existing.quantity + qtd;
+        db.run('UPDATE cart SET quantity = ? WHERE id = ?', [newQtd, existing.id], function(err) {
+          if (err) return res.status(500).json({ error: 'Erro' });
+          res.json({ message: 'Quantidade atualizada' });
+        });
+      } else {
+        db.run(
+          'INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?)',
+          [req.userId, product_id, qtd],
+          function(err) {
+            if (err) return res.status(500).json({ error: 'Erro' });
+            res.status(201).json({ message: 'Adicionado ao carrinho' });
+          }
+        );
+      }
+    });
+  });
+});
+
+// Remover do carrinho
+app.delete('/api/cart/:id', authMiddleware, (req, res) => {
+  db.run('DELETE FROM cart WHERE id = ? AND user_id = ?', [req.params.id, req.userId], function(err) {
+    if (err) return res.status(500).json({ error: 'Erro' });
+    res.json({ message: 'Removido' });
+  });
+});
+
+// Esvaziar carrinho
+app.delete('/api/cart', authMiddleware, (req, res) => {
+  db.run('DELETE FROM cart WHERE user_id = ?', [req.userId], function(err) {
+    if (err) return res.status(500).json({ error: 'Erro' });
+    res.json({ message: 'Carrinho esvaziado' });
+  });
+});
+
+// Listar meus endereços
+app.get('/api/addresses', authMiddleware, (req, res) => {
+  db.all(
+    'SELECT * FROM addresses WHERE user_id = ? ORDER BY is_default DESC, created_at DESC',
+    [req.userId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Erro' });
+      res.json(rows);
+    }
+  );
+});
+
+// Criar endereço
+app.post('/api/addresses', authMiddleware, (req, res) => {
+  const { street, number, complement, city, state, zip, country, is_default } = req.body;
+  
+  if (!street || !city || !state) {
+    return res.status(400).json({ error: 'Rua, cidade e estado são obrigatórios' });
+  }
+
+  db.run(
+    `INSERT INTO addresses (user_id, street, number, complement, city, state, zip, country, is_default) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [req.userId, street, number || null, complement || null, city, state, zip || null, country || 'Brasil', is_default ? 1 : 0],
+    async function(err) {
+      if (err) return res.status(500).json({ error: 'Erro' });
+      
+      if (is_default) {
+        db.run('UPDATE addresses SET is_default = 0 WHERE user_id = ? AND id != ?', [req.userId, this.lastID]);
+      }
+      
+      res.status(201).json({ message: 'Endereço salvo', addressId: this.lastID });
+    }
+  );
+});
+
+// Definir como padrão
+app.put('/api/addresses/:id/default', authMiddleware, (req, res) => {
+  db.run('UPDATE addresses SET is_default = 0 WHERE user_id = ?', [req.userId], function(err) {
+    db.run('UPDATE addresses SET is_default = 1 WHERE id = ? AND user_id = ?', [req.params.id, req.userId], function(err) {
+      if (err) return res.status(500).json({ error: 'Erro' });
+      res.json({ message: 'Endereço padrão atualizado' });
+    });
+  });
+});
+
+// Deletar endereço
+app.delete('/api/addresses/:id', authMiddleware, (req, res) => {
+  db.run('DELETE FROM addresses WHERE id = ? AND user_id = ?', [req.params.id, req.userId], function(err) {
+    if (err) return res.status(500).json({ error: 'Erro' });
+    res.json({ message: 'Endereço removido' });
+  });
+});
+
+// Checkout do carrinho
+app.post('/api/orders/checkout', authMiddleware, (req, res) => {
+  const { address_id } = req.body;
+
+  db.all(
+    `SELECT c.*, p.* FROM cart c JOIN products p ON c.product_id = p.id WHERE c.user_id = ?`,
+    [req.userId],
+    async (err, items) => {
+      if (err || items.length === 0) return res.status(400).json({ error: 'Carrinho vazio' });
+
+      let total = 0;
+      let hasPhysical = false;
+      let addressToUse = null;
+
+      // Verifica estoque e calcula total
+      for (let item of items) {
+        if (item.type === 'physical') {
+          hasPhysical = true;
+          if (item.stock < item.quantity) {
+            return res.status(400).json({ error: `Estoque insuficiente: ${item.name}` });
+          }
+        }
+        total += item.price * item.quantity;
+      }
+
+      // Se tem produto físico, precisa de endereço
+      if (hasPhysical) {
+        if (!address_id) return res.status(400).json({ error: 'Selecione um endereço de entrega' });
+        
+        const addr = await new Promise((resolve, reject) => {
+          db.get('SELECT * FROM addresses WHERE id = ? AND user_id = ?', [address_id, req.userId], (err, row) => {
+            if (err || !row) resolve(null);
+            else resolve(row);
+          });
+        });
+        
+        if (!addr) return res.status(400).json({ error: 'Endereço inválido' });
+        addressToUse = `${addr.street}, ${addr.number || 'S/N'}${addr.complement ? ' - ' + addr.complement : ''}, ${addr.city}/${addr.state}, ${addr.zip}`;
+      }
+
+      // Cria pedidos para cada item
+      const orderIds = [];
+      for (let item of items) {
+        if (item.type === 'physical') {
+          db.run('UPDATE products SET stock = stock - ? WHERE id = ?', [item.quantity, item.id]);
+        }
+        
+        const result = await new Promise((resolve, reject) => {
+          db.run(
+            'INSERT INTO orders (user_id, product_id, quantity, total, address) VALUES (?, ?, ?, ?, ?)',
+            [req.userId, item.id, item.quantity, item.price * item.quantity, addressToUse],
+            function(err) {
+              if (err) reject(err);
+              else resolve(this.lastID);
+            }
+          );
+        });
+        orderIds.push(result);
+      }
+
+      // Limpa carrinho
+      db.run('DELETE FROM cart WHERE user_id = ?', [req.userId]);
+
+      await triggerN8n('new_order', {
+        userId: req.userId,
+        userEmail: req.userEmail,
+        userName: req.userName,
+        orderIds: orderIds,
+        total: total,
+        address: addressToUse
+      });
+
+      res.status(201).json({
+        message: 'Pedido finalizado!',
+        orders: orderIds,
+        total: total
+      });
+    }
+  );
+});
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
   console.log(`📡 n8n Webhook: ${process.env.N8N_WEBHOOK_URL || 'NÃO CONFIGURADO'}`);
