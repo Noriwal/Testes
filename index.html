@@ -419,6 +419,9 @@
                     Entrar
                 </button>
                 <div id="login-msg"></div>
+                <p style="text-align:center;margin-top:1rem;">
+                    <a onclick="showSection('recuperar-senha')" style="color:var(--primary);cursor:pointer;font-size:0.9rem;">Esqueceu a senha?</a>
+                </p>
                 <p style="text-align: center; margin-top: 1rem; color: var(--text-muted);">
                     Não tem conta? <a onclick="showSection('cadastro')" style="color: var(--primary); cursor: pointer;">Cadastrar</a>
                 </p>
@@ -517,7 +520,43 @@
             </div>
         </div>
     </section>
+    
+<!-- RECUPERAR SENHA -->
+<section id="recuperar-senha" class="section">
+    <div class="card" style="max-width:400px;margin:0 auto;">
+        <h2 style="margin-bottom:1.5rem;">Recuperar Senha</h2>
+        <form id="form-recuperar">
+            <div class="form-group">
+                <label>Digite seu e-mail</label>
+                <input type="email" id="rec-email" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;">
+                Enviar instruções
+            </button>
+            <div id="rec-msg"></div>
+            <p style="text-align:center;margin-top:1rem;color:var(--text-muted);">
+                <a onclick="showSection('login')" style="color:var(--primary);cursor:pointer;">Voltar ao login</a>
+            </p>
+        </form>
+    </div>
+</section>
 
+<!-- RESETAR SENHA (com token na URL) -->
+<section id="reset-senha" class="section">
+    <div class="card" style="max-width:400px;margin:0 auto;">
+        <h2 style="margin-bottom:1.5rem;">Nova Senha</h2>
+        <form id="form-reset">
+            <div class="form-group">
+                <label>Nova senha</label>
+                <input type="password" id="reset-senha" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;">
+                Alterar senha
+            </button>
+            <div id="reset-msg"></div>
+        </form>
+    </div>
+</section>
 </div>
 
 <script src="app.js"></script>
