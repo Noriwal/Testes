@@ -385,6 +385,67 @@ app.get('/api/health', (req, res) => {
 // START
 // ============================
 
+// Gerar token de reset e avisar n8n enviar e-mail
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'E-mail obrigatório' });
+
+  db.get('SELECT id, name, email FROM users WHERE email = ? AND deleted_at IS NULL', [email], async (err, user) => {
+    if (err || !user) {
+      // Retorna sucesso mesmo se não existir (segurança: não revelar e-mails)
+      return res.json({ message: 'Se o e-mail existir, enviaremos instruções.' });
+    }
+
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 3600000); // 1 hora
+
+    db.run(
+      'INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)',
+      [user.id, token, expires.toISOString()],
+      async function(err) {
+        if (err) return res.status(500).json({ error: 'Erro ao gerar token' });
+
+        // Dispara n8n para enviar e-mail
+        await triggerN8n('password_reset_request', {
+          userId: user.id,
+          name: user.name,
+          email: user.email,
+          resetToken: token,
+          resetLink: `https://testes-bxae.onrender.com/reset-password.html?token=${token}`
+        });
+
+        res.json({ message: 'Se o e-mail existir, enviaremos instruções.' });
+      }
+    );
+  });
+});
+
+// Resetar senha com token
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword || newPassword.length < 6) {
+    return res.status(400).json({ error: 'Token e senha (mín. 6 chars) obrigatórios' });
+  }
+
+  db.get(
+    'SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > datetime("now")',
+    [token],
+    async (err, reset) => {
+      if (err || !reset) return res.status(400).json({ error: 'Token inválido ou expirado' });
+
+      const hashed = await bcrypt.hash(newPassword, 12);
+
+      db.run('UPDATE users SET password = ? WHERE id = ?', [hashed, reset.user_id], function(err) {
+        if (err) return res.status(500).json({ error: 'Erro ao atualizar senha' });
+
+        db.run('UPDATE password_resets SET used = 1 WHERE id = ?', [reset.id]);
+        res.json({ message: 'Senha alterada com sucesso! Faça login.' });
+      });
+    }
+  );
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
   console.log(`📡 n8n Webhook: ${process.env.N8N_WEBHOOK_URL || 'NÃO CONFIGURADO'}`);
