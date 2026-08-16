@@ -1,0 +1,46 @@
+/* Design note: Arquivo de Bancada — papel quente, grafite, cobre oxidado e instrumentação legível. */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --paper: #e9e0cc;
+  --paper-light: #f6f0e2;
+  --ink: #202520;
+  --muted-ink: #596058;
+  --copper: #b85e3d;
+  --copper-dark: #87412d;
+  --signal: #7e9d75;
+  --signal-bright: #b3d49c;
+  --danger: #a84436;
+  --rule: rgba(32, 37, 32, 0.18);
+  --graphite: #1d211f;
+  --radius: 0.2rem;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image: url("/media/nashville-paper-texture.jpg");
+  background-attachment: fixed;
+  font-family: "Manrope", sans-serif;
+}
+button, a { -webkit-tap-highlight-color: transparent; }
+a { color: inherit; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise-in { animation: rise-in 520ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+  .rise-in.delay-1 { animation-delay: 70ms; }
+  .rise-in.delay-2 { animation-delay: 140ms; }
+  .signal-path { animation: dash-move 2.8s linear infinite; }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes dash-move { to { stroke-dashoffset: -36; } }
