@@ -26,6 +26,7 @@ x-n8n: &n8n-common
     N8N_EDITOR_BASE_URL: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}:${PUBLIC_PORT:-8080}/
     WEBHOOK_URL: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}:${PUBLIC_PORT:-8080}/
     N8N_PROXY_HOPS: 1
+    N8N_SECURE_COOKIE: ${N8N_SECURE_COOKIE:-false}
     EXECUTIONS_MODE: ${N8N_EXECUTIONS_MODE:-regular}
     QUEUE_BULL_REDIS_HOST: redis
     QUEUE_BULL_REDIS_PORT: 6379
@@ -196,3 +197,4 @@ volumes:
   n8n_worker_data:
   certbot_www:
   certbot_certs:
+
