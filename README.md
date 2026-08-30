@@ -20,6 +20,8 @@ O instalador cria `.env`, gera senhas/chaves aleatórias e inicia todos os conta
 - Evolution API: `http://evolution.localhost:8080`
 - n8n: `http://n8n.localhost:8080`
 
+No modo HTTP local, `N8N_SECURE_COOKIE=false` evita o bloqueio de login por cookie seguro. Ao publicar com HTTPS, altere essa opção para `true`.
+
 Os domínios `*.localhost` normalmente resolvem automaticamente para `127.0.0.1`. Se isso não ocorrer, acrescente ao arquivo `hosts`:
 
 ```text
@@ -108,3 +110,4 @@ Para uso público, altere os domínios e `PUBLIC_SCHEME=https` no `.env` e acres
 - `02-atualizar.sh` a `06-rollback.sh`: manutenção e recuperação.
 
 Nunca publique o arquivo `.env`. O `.gitignore` já exclui segredos, backups e estados de rollback.
+
