@@ -39,6 +39,6 @@ compose_up
 wait_healthy 420 || { compose ps; die "Os containers não ficaram saudáveis. Consulte: docker compose logs"; }
 
 info "Ambiente local pronto."
-info "Evolution: ${PUBLIC_SCHEME:-http}://${EVOLUTION_DOMAIN}"
-info "n8n: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}"
+info "Evolution: ${PUBLIC_SCHEME:-http}://${EVOLUTION_DOMAIN}:${PUBLIC_PORT:-8080}"
+info "n8n: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}:${PUBLIC_PORT:-8080}"
 info "API key e chaves estão no arquivo .env; não o publique."

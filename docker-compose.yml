@@ -22,7 +22,7 @@ x-n8n: &n8n-common
     N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
     N8N_HOST: ${N8N_DOMAIN}
     N8N_PROTOCOL: ${PUBLIC_SCHEME:-http}
-    N8N_PORT: 5678
+    N8N_PORT: ${PUBLIC_PORT:-8080}
     N8N_EDITOR_BASE_URL: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}:${PUBLIC_PORT:-8080}/
     WEBHOOK_URL: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}:${PUBLIC_PORT:-8080}/
     N8N_PROXY_HOPS: 1
@@ -126,11 +126,11 @@ services:
   n8n:
     <<: *n8n-common
     expose:
-      - "5678"
+      - "8080"
     volumes:
       - n8n_data:/home/node/.n8n
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:5678/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -197,4 +197,3 @@ volumes:
   n8n_worker_data:
   certbot_www:
   certbot_certs:
-

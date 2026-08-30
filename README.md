@@ -35,7 +35,7 @@ No Windows, o arquivo é `C:\Windows\System32\drivers\etc\hosts`.
 ```text
 Internet/host → Nginx :8080/:8443
                     ├── evolution:8080
-                    └── n8n:5678
+                    └── n8n:8080
 
 Evolution/n8n → PostgreSQL + Redis (rede interna)
 ```
@@ -110,4 +110,3 @@ Para uso público, altere os domínios e `PUBLIC_SCHEME=https` no `.env` e acres
 - `02-atualizar.sh` a `06-rollback.sh`: manutenção e recuperação.
 
 Nunca publique o arquivo `.env`. O `.gitignore` já exclui segredos, backups e estados de rollback.
-
