@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-APP_DIR="${APP_DIR:-/opt/automation}"
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+APP_DIR="${APP_DIR:-$SCRIPT_DIR}"
 source "$SCRIPT_DIR/scripts/common.sh"
-need_root
 
 state="${1:-$APP_DIR/rollback/latest}"
 auto="${2:-}"
@@ -22,4 +21,3 @@ compose pull
 compose_up
 wait_healthy 420 || die "Rollback aplicado, mas serviços não ficaram saudáveis. Use 05-status.sh e consulte os logs."
 info "Rollback de versões/configuração concluído. Bancos não foram alterados."
-

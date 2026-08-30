@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-APP_DIR="${APP_DIR:-/opt/automation}"
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+APP_DIR="${APP_DIR:-$SCRIPT_DIR}"
 source "$SCRIPT_DIR/scripts/common.sh"
-need_root; load_env
+load_env
 
 usage() { echo "Uso: $0 [--evolution VERSAO] [--n8n VERSAO] [--postgres VERSAO] [--redis VERSAO]"; }
 declare -A changes=()
@@ -43,4 +43,3 @@ if ! wait_healthy 420; then
 fi
 ln -sfn "$state" "$APP_DIR/rollback/latest"
 info "Atualização concluída. Estado anterior: $state"
-

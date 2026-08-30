@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-APP_DIR="${APP_DIR:-/opt/automation}"
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+APP_DIR="${APP_DIR:-$SCRIPT_DIR}"
 source "$SCRIPT_DIR/scripts/common.sh"
-need_root; need_cmd docker; load_env
+need_cmd docker; load_env
 
 tier="${1:-daily}"
 [[ "$tier" =~ ^(daily|weekly|monthly|pre-update)$ ]] || die "Uso: $0 [daily|weekly|monthly|pre-update]"
@@ -31,4 +31,3 @@ mapfile -t old < <(find "$base" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\
 for path in "${old[@]}"; do [[ "$path" == "$base"/* ]] && rm -rf -- "$path"; done
 ln -sfn "$target" "${BACKUP_DIR:-$APP_DIR/backups}/latest-$tier"
 info "Backup concluído: $target"
-

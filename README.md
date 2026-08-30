@@ -1,109 +1,110 @@
-# Evolution API + n8n em VPS
+# Evolution API + n8n — ambiente Docker local
 
-Pacote de instalação para Ubuntu/Debian com Evolution API, n8n, PostgreSQL, Redis, Nginx, HTTPS, firewall, Fail2ban, backups e rollback. PostgreSQL e Redis ficam somente na rede Docker interna; Evolution e n8n também participam de uma rede de saída, escutam no host exclusivamente em `127.0.0.1` e são publicados pelo Nginx.
-
-> Leia antes de executar. Teste primeiro em uma VPS descartável e mantenha um backup externo. As tags em `.env.example` são pontos de partida configuráveis: confirme a compatibilidade das versões desejadas antes da instalação.
+Ambiente autocontido para executar Evolution API, n8n, PostgreSQL, Redis e Nginx com Docker Compose. PostgreSQL e Redis permanecem em uma rede interna; apenas o Nginx publica portas no computador.
 
 ## Requisitos
 
-- Ubuntu 22.04/24.04 ou Debian 12, acesso root e arquitetura suportada pelas imagens.
-- Recomendado: 4 vCPU, 6 GB RAM, 30 GB livres. O instalador exige 10 GB livres e avisa abaixo de 3,5 GB RAM.
-- Dois registros DNS A já apontando para o IPv4 público da VPS.
-- Portas 22, 80 e 443 acessíveis. As portas 5678 e 8080 não devem ser publicadas.
-- O SSH deve estar funcional antes de ativar o UFW.
+- Docker Desktop ou Docker Engine com Compose v2.
+- Recomendado: 6 GB de RAM disponíveis para os containers.
+- Linux, macOS ou Windows com WSL/Git Bash para os scripts Bash.
 
-## Instalação
-
-Copie a pasta para a VPS, revise `.env.example` e execute:
+## Início rápido
 
 ```bash
 chmod +x 0*.sh scripts/*.sh postgres-init/*.sh
-sudo ./01-instalar.sh
+./01-instalar.sh
 ```
 
-O instalador solicita os dois domínios e o e-mail do Let's Encrypt, valida recursos, portas e DNS, instala dependências, gera segredos, cria `/opt/automation`, sobe os serviços, espera os healthchecks e emite o certificado. O `.env` gerado recebe permissão `600`.
+O instalador cria `.env`, gera senhas/chaves aleatórias e inicia todos os containers. Depois acesse:
 
-URLs finais:
+- Evolution API: `http://evolution.localhost`
+- n8n: `http://n8n.localhost`
 
-- `https://evolution.seudominio.tld`
-- `https://n8n.seudominio.tld`
+Os domínios `*.localhost` normalmente resolvem automaticamente para `127.0.0.1`. Se isso não ocorrer, acrescente ao arquivo `hosts`:
 
-A API key da Evolution fica em `/opt/automation/.env`. Guarde uma cópia segura fora da VPS. A chave de criptografia do n8n nunca deve ser perdida.
+```text
+127.0.0.1 evolution.localhost n8n.localhost
+```
+
+No Windows, o arquivo é `C:\Windows\System32\drivers\etc\hosts`.
+
+## Serviços
+
+```text
+Internet/host → Nginx :80/:443
+                    ├── evolution:8080
+                    └── n8n:5678
+
+Evolution/n8n → PostgreSQL + Redis (rede interna)
+```
+
+Evolution e n8n possuem rede de saída para webhooks e APIs externas. PostgreSQL e Redis não publicam portas e não participam dessa rede.
+
+## Operação
+
+```bash
+./05-status.sh
+./03-backup.sh daily
+./03-backup.sh weekly
+./03-backup.sh monthly
+./04-restaurar.sh ./backups/daily/AAAAMMDD-HHMMSS
+```
+
+Parar e iniciar diretamente:
+
+```bash
+docker compose down
+docker compose up -d
+docker compose logs -f --tail=200
+```
+
+Os volumes persistem ao executar `docker compose down`. O comando `docker compose down -v` apaga todos os bancos e dados persistentes; use somente quando realmente quiser reiniciar do zero.
 
 ## Worker e queue mode
 
-Por padrão o n8n usa execução regular. Para ativar um worker, altere no `.env`:
+Altere `.env`:
 
 ```dotenv
 ENABLE_N8N_WORKER=true
 N8N_EXECUTIONS_MODE=queue
 ```
 
-Depois aplique:
+Depois execute:
 
 ```bash
-cd /opt/automation
-sudo docker compose --profile worker up -d
-```
-
-Para desativar, volte aos valores `false` e `regular` e execute `sudo docker compose up -d --remove-orphans`.
-
-## Operação
-
-```bash
-sudo /opt/automation/03-backup.sh daily
-sudo /opt/automation/03-backup.sh weekly
-sudo /opt/automation/03-backup.sh monthly
-sudo /opt/automation/05-status.sh
-```
-
-Os agendamentos diário, semanal (domingo) e mensal (dia 1) são criados em `/etc/cron.d/automation-backup`. A retenção padrão é 7 backups diários, 4 semanais e 6 mensais. Para redundância real, sincronize `/opt/automation/backups` com armazenamento externo; este pacote não envia dados para terceiros.
-
-Restauração destrutiva dos dois bancos:
-
-```bash
-sudo /opt/automation/04-restaurar.sh /opt/automation/backups/daily/AAAAMMDD-HHMMSS
+docker compose --profile worker up -d
 ```
 
 ## Atualização e rollback
 
-Informe explicitamente as novas tags. O script faz backup, guarda o estado, baixa imagens, aplica e aguarda saúde. Em falha, restaura automaticamente as versões/configuração anteriores.
-
 ```bash
-sudo /opt/automation/02-atualizar.sh --evolution vX.Y.Z --n8n X.Y.Z
-sudo /opt/automation/02-atualizar.sh --postgres 16.x-alpine --redis 7.x-alpine
-sudo /opt/automation/06-rollback.sh
+./02-atualizar.sh --evolution vX.Y.Z --n8n X.Y.Z
+./02-atualizar.sh --postgres 16.x-alpine --redis 7.x-alpine
+./06-rollback.sh
 ```
 
-O rollback automático restaura imagens/configuração, não os bancos. Se uma atualização executou migrações incompatíveis, use também `04-restaurar.sh` com o backup `pre-update`. Atualizações de versão principal do PostgreSQL exigem procedimento próprio (`pg_dump`/restore em instância nova); não troque apenas a tag.
+A atualização cria backup e registra o estado anterior. Não altere apenas a tag para fazer upgrade de versão principal do PostgreSQL; use dump/restore em um banco novo.
 
-## Segurança e manutenção
+## HTTPS e Certbot
 
-- UFW libera `OpenSSH` e `Nginx Full`. Confirme a porta SSH caso use uma porta personalizada antes da instalação.
-- Fail2ban é habilitado com a configuração padrão da distribuição.
-- Logs Docker usam rotação de 10 MB × 5 arquivos por serviço.
-- Limites de CPU/RAM são configuráveis no `.env` e devem ser ajustados à carga real.
-- O Certbot instala redirecionamento HTTPS e usa seu timer de renovação.
-- Não coloque `.env`, dumps ou chaves em Git. Restrinja acesso ao diretório `/opt/automation`.
-- Faça testes periódicos de restauração; backup não testado não é garantia de recuperação.
-
-## Arquivos
-
-- `01-instalar.sh`: validação, instalação, hardening básico e HTTPS.
-- `02-atualizar.sh`: atualização versionada com backup e rollback automático.
-- `03-backup.sh`: dumps PostgreSQL, configuração e retenção.
-- `04-restaurar.sh`: restauração confirmada dos bancos.
-- `05-status.sh`: containers, URLs, SSL, recursos e serviços do host.
-- `06-rollback.sh`: retorno às tags/configuração anteriores.
-- `docker-compose.yml`: serviços, healthchecks, rede interna, volumes e limites.
-- `postgres-init/01-create-databases.sh`: usuários e bancos separados no primeiro boot.
-
-## Diagnóstico
+O modo local usa HTTP porque o Let's Encrypt não emite certificados para `localhost`. O container Certbot está disponível no perfil `ssl` para uma futura publicação com domínios reais:
 
 ```bash
-cd /opt/automation
-sudo docker compose ps
-sudo docker compose logs --tail=200 evolution n8n postgres redis
-sudo nginx -t
-sudo certbot renew --dry-run
+docker compose --profile ssl run --rm certbot certonly \
+  --webroot -w /var/www/certbot \
+  --email voce@dominio.com --agree-tos --no-eff-email \
+  -d evolution.seudominio.com -d n8n.seudominio.com
 ```
+
+Para uso público, altere os domínios e `PUBLIC_SCHEME=https` no `.env` e acrescente os blocos TLS ao template do Nginx apontando para os certificados no volume `/etc/letsencrypt`. Não use certificados públicos com os nomes `.localhost`.
+
+## Arquivos importantes
+
+- `.env.example`: versões, domínios, portas e limites.
+- `docker-compose.yml`: toda a infraestrutura em containers.
+- `nginx/templates/default.conf.template`: proxy reverso local.
+- `postgres-init/01-create-databases.sh`: bancos/usuários separados.
+- `01-instalar.sh`: preparação e inicialização local.
+- `02-atualizar.sh` a `06-rollback.sh`: manutenção e recuperação.
+
+Nunca publique o arquivo `.env`. O `.gitignore` já exclui segredos, backups e estados de rollback.

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-APP_DIR="${APP_DIR:-/opt/automation}"
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+APP_DIR="${APP_DIR:-$SCRIPT_DIR}"
 source "$SCRIPT_DIR/scripts/common.sh"
-need_root; load_env
+load_env
 
 backup="${1:-}"
 [[ -n "$backup" && -d "$backup" ]] || die "Uso: $0 /caminho/do/backup"
