@@ -1,8 +1,0 @@
-services:
-  - type: web
-    name: nashville-na2200-vintage-guide
-    runtime: static
-    rootDir: nashville-guide
-    buildCommand: pnpm install --frozen-lockfile && pnpm build
-    staticPublishPath: dist/public
-    pullRequestPreviewsEnabled: false
