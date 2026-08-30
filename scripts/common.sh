@@ -32,7 +32,8 @@ wait_healthy() {
   while :; do
     unhealthy=$(compose ps --format json 2>/dev/null | grep -E '"Health":"(starting|unhealthy)"|"State":"(exited|dead)"' || true)
     [[ -z "$unhealthy" ]] && compose ps --services --filter status=running | grep -qx evolution \
-      && compose ps --services --filter status=running | grep -qx n8n && return 0
+      && compose ps --services --filter status=running | grep -qx n8n \
+      && compose ps --services --filter status=running | grep -qx nginx && return 0
     now=$(date +%s)
     (( now - start < timeout )) || return 1
     sleep 5

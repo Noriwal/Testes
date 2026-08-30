@@ -17,8 +17,8 @@ chmod +x 0*.sh scripts/*.sh postgres-init/*.sh
 
 O instalador cria `.env`, gera senhas/chaves aleatórias e inicia todos os containers. Depois acesse:
 
-- Evolution API: `http://evolution.localhost`
-- n8n: `http://n8n.localhost`
+- Evolution API: `http://evolution.localhost:8080`
+- n8n: `http://n8n.localhost:8080`
 
 Os domínios `*.localhost` normalmente resolvem automaticamente para `127.0.0.1`. Se isso não ocorrer, acrescente ao arquivo `hosts`:
 
@@ -31,7 +31,7 @@ No Windows, o arquivo é `C:\Windows\System32\drivers\etc\hosts`.
 ## Serviços
 
 ```text
-Internet/host → Nginx :80/:443
+Internet/host → Nginx :8080/:8443
                     ├── evolution:8080
                     └── n8n:5678
 

@@ -23,8 +23,8 @@ x-n8n: &n8n-common
     N8N_HOST: ${N8N_DOMAIN}
     N8N_PROTOCOL: ${PUBLIC_SCHEME:-http}
     N8N_PORT: 5678
-    N8N_EDITOR_BASE_URL: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}/
-    WEBHOOK_URL: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}/
+    N8N_EDITOR_BASE_URL: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}:${PUBLIC_PORT:-8080}/
+    WEBHOOK_URL: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}:${PUBLIC_PORT:-8080}/
     N8N_PROXY_HOPS: 1
     EXECUTIONS_MODE: ${N8N_EXECUTIONS_MODE:-regular}
     QUEUE_BULL_REDIS_HOST: redis
@@ -93,7 +93,7 @@ services:
       TZ: ${TZ}
       SERVER_TYPE: http
       SERVER_PORT: 8080
-      SERVER_URL: ${PUBLIC_SCHEME:-http}://${EVOLUTION_DOMAIN}
+      SERVER_URL: ${PUBLIC_SCHEME:-http}://${EVOLUTION_DOMAIN}:${PUBLIC_PORT:-8080}
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: postgresql
       DATABASE_CONNECTION_URI: postgresql://${EVOLUTION_DB_USER}:${EVOLUTION_DB_PASSWORD}@postgres:5432/${EVOLUTION_DB}?schema=public
@@ -154,8 +154,8 @@ services:
       N8N_DOMAIN: ${N8N_DOMAIN}
       NGINX_ENVSUBST_FILTER: "EVOLUTION_DOMAIN|N8N_DOMAIN"
     ports:
-      - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
+      - "${HTTP_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
     volumes:
       - ./nginx/templates:/etc/nginx/templates:ro
       - certbot_www:/var/www/certbot:ro
