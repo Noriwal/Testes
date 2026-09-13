@@ -24,16 +24,21 @@ worker_args() {
 compose_up() {
   local args=()
   if [[ "${ENABLE_N8N_WORKER:-false}" == "true" ]]; then args+=(--profile worker); fi
+  if compose --profile https ps --services --filter status=running 2>/dev/null | grep -qx nginx; then
+    args+=(--profile https)
+  fi
   compose "${args[@]}" up -d --remove-orphans
 }
 wait_healthy() {
   local timeout="${1:-300}" start now unhealthy
   start=$(date +%s)
   while :; do
-    unhealthy=$(compose ps --format json 2>/dev/null | grep -E '"Health":"(starting|unhealthy)"|"State":"(exited|dead)"' || true)
-    [[ -z "$unhealthy" ]] && compose ps --services --filter status=running | grep -qx evolution \
-      && compose ps --services --filter status=running | grep -qx n8n \
-      && compose ps --services --filter status=running | grep -qx nginx && return 0
+    unhealthy=$(compose --profile https ps --format json 2>/dev/null | grep -E '"Health":"(starting|unhealthy)"|"State":"(exited|dead)"' || true)
+    if [[ -z "$unhealthy" ]] \
+      && compose ps --services --filter status=running | grep -qx evolution \
+      && compose ps --services --filter status=running | grep -qx n8n; then
+      return 0
+    fi
     now=$(date +%s)
     (( now - start < timeout )) || return 1
     sleep 5
