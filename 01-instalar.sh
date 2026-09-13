@@ -33,12 +33,20 @@ for key in POSTGRES_SUPERUSER_PASSWORD EVOLUTION_DB_PASSWORD N8N_DB_PASSWORD EVO
 done
 
 load_env
+[[ -n "${DUCKDNS_TOKEN:-}" && "$DUCKDNS_TOKEN" != CHANGE_ME ]] || \
+  die "Preencha DUCKDNS_TOKEN no arquivo .env e execute novamente."
+[[ -n "${LETSENCRYPT_EMAIL:-}" && "$LETSENCRYPT_EMAIL" != admin@example.com ]] || \
+  die "Preencha LETSENCRYPT_EMAIL no arquivo .env e execute novamente."
+
 mkdir -p "$APP_DIR/backups" "$APP_DIR/rollback"
 compose config --quiet
 compose_up
-wait_healthy 420 || { compose ps; die "Os containers não ficaram saudáveis. Consulte: docker compose logs"; }
+wait_healthy 420 || { compose --profile https ps; die "Os containers não ficaram saudáveis. Consulte: docker compose logs"; }
 
-info "Ambiente local pronto."
-info "Evolution: ${PUBLIC_SCHEME:-http}://${EVOLUTION_DOMAIN}:${PUBLIC_PORT:-8080}"
-info "n8n: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}:${PUBLIC_PORT:-8080}"
+info "Serviços internos e DuckDNS prontos."
+if compose --profile https ps --services --filter status=running | grep -qx nginx; then
+  info "n8n: https://${N8N_DOMAIN}/"
+else
+  info "Próximo passo: encaminhe as portas 80 e 443 no roteador e execute ./07-configurar-https.sh"
+fi
 info "API key e chaves estão no arquivo .env; não o publique."
