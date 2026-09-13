@@ -21,12 +21,12 @@ x-n8n: &n8n-common
     DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
     N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
     N8N_HOST: ${N8N_DOMAIN}
-    N8N_PROTOCOL: ${PUBLIC_SCHEME:-http}
-    N8N_PORT: ${PUBLIC_PORT:-8080}
-    N8N_EDITOR_BASE_URL: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}:${PUBLIC_PORT:-8080}/
-    WEBHOOK_URL: ${PUBLIC_SCHEME:-http}://${N8N_DOMAIN}:${PUBLIC_PORT:-8080}/
+    N8N_PROTOCOL: http
+    N8N_PORT: 8080
+    N8N_EDITOR_BASE_URL: https://${N8N_DOMAIN}/
+    WEBHOOK_URL: https://${N8N_DOMAIN}/
     N8N_PROXY_HOPS: 1
-    N8N_SECURE_COOKIE: ${N8N_SECURE_COOKIE:-false}
+    N8N_SECURE_COOKIE: "true"
     EXECUTIONS_MODE: ${N8N_EXECUTIONS_MODE:-regular}
     QUEUE_BULL_REDIS_HOST: redis
     QUEUE_BULL_REDIS_PORT: 6379
@@ -94,7 +94,7 @@ services:
       TZ: ${TZ}
       SERVER_TYPE: http
       SERVER_PORT: 8080
-      SERVER_URL: ${PUBLIC_SCHEME:-http}://${EVOLUTION_DOMAIN}:${PUBLIC_PORT:-8080}
+      SERVER_URL: ${EVOLUTION_PUBLIC_URL:-http://evolution.localhost}
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: postgresql
       DATABASE_CONNECTION_URI: postgresql://${EVOLUTION_DB_USER}:${EVOLUTION_DB_PASSWORD}@postgres:5432/${EVOLUTION_DB}?schema=public
@@ -147,16 +147,28 @@ services:
     cpus: ${N8N_WORKER_CPUS:-1.0}
     mem_limit: ${N8N_WORKER_MEMORY:-1024M}
 
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      SUBDOMAINS: ${DUCKDNS_SUBDOMAIN}
+      TOKEN: ${DUCKDNS_TOKEN}
+      LOG_FILE: "false"
+    networks: [egress]
+    logging: *default-logging
+
   nginx:
     image: nginx:1.27.3-alpine
+    profiles: [https]
     restart: unless-stopped
     environment:
       EVOLUTION_DOMAIN: ${EVOLUTION_DOMAIN}
       N8N_DOMAIN: ${N8N_DOMAIN}
       NGINX_ENVSUBST_FILTER: "EVOLUTION_DOMAIN|N8N_DOMAIN"
     ports:
-      - "${HTTP_PORT:-8080}:80"
-      - "${HTTPS_PORT:-8443}:443"
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
     volumes:
       - ./nginx/templates:/etc/nginx/templates:ro
       - certbot_www:/var/www/certbot:ro
@@ -176,18 +188,18 @@ services:
 
   certbot:
     image: certbot/certbot:v3.1.0
-    profiles: [ssl]
+    profiles: [ssl-tools]
+    ports:
+      - "${HTTP_PORT:-80}:80"
     volumes:
       - certbot_www:/var/www/certbot
       - certbot_certs:/etc/letsencrypt
-    networks: [proxy]
+    networks: [egress]
 
 networks:
   backend:
     internal: true
   egress:
-    # Evolution e n8n precisam de saída para APIs, webhooks e serviços externos.
-    # PostgreSQL e Redis não participam desta rede.
   proxy:
 
 volumes:

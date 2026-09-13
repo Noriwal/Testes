@@ -1,112 +1,143 @@
-# Evolution API + n8n — ambiente Docker local
+# Evolution API + n8n — Docker local com DuckDNS e HTTPS
 
-Ambiente autocontido para executar Evolution API, n8n, PostgreSQL, Redis e Nginx com Docker Compose. PostgreSQL e Redis permanecem em uma rede interna; apenas o Nginx publica portas no computador.
+Ambiente para executar Evolution API, n8n, PostgreSQL, Redis, DuckDNS, Nginx e Certbot com Docker Compose. PostgreSQL e Redis permanecem em rede interna. O n8n é publicado em `https://noriwal.duckdns.org`; a Evolution permanece local por enquanto.
 
 ## Requisitos
 
 - Docker Desktop ou Docker Engine com Compose v2.
 - Recomendado: 6 GB de RAM disponíveis para os containers.
 - Linux, macOS ou Windows com WSL/Git Bash para os scripts Bash.
+- O domínio `noriwal.duckdns.org` criado no DuckDNS.
+- IPv4 público no roteador, sem CGNAT.
+- Portas TCP 80 e 443 encaminhadas para o IP local do computador Docker.
+- Portas TCP 80 e 443 liberadas no Firewall do Windows.
 
-## Início rápido
+Nunca publique o arquivo `.env`. O `.gitignore` já exclui segredos, backups e estados de rollback.
 
-```bash
+## Preparação
+
+Na raiz do repositório:
+
+~~~bash
+cp .env.example .env
+~~~
+
+Abra `.env` e preencha estes dois valores:
+
+~~~dotenv
+DUCKDNS_TOKEN=TOKEN_REAL_DO_DUCKDNS
+LETSENCRYPT_EMAIL=SEU_EMAIL_REAL
+~~~
+
+O token do DuckDNS funciona como uma senha. Não envie o token em mensagens e não o coloque em `.env.example`.
+
+## Portas no roteador
+
+Crie dois encaminhamentos TCP para o IPv4 local fixo do computador que executa o Docker Desktop:
+
+| Porta externa | IP de destino | Porta interna |
+|---:|---|---:|
+| 80 | IPv4 local do computador | 80 |
+| 443 | IPv4 local do computador | 443 |
+
+Teste a publicação usando a internet móvel do celular, com o Wi-Fi desligado. Alguns roteadores não suportam testar o próprio endereço público a partir da rede interna.
+
+## Instalação
+
+~~~bash
 chmod +x 0*.sh scripts/*.sh postgres-init/*.sh
 ./01-instalar.sh
-```
+~~~
 
-O instalador cria `.env`, gera senhas/chaves aleatórias e inicia todos os containers. Depois acesse:
+O instalador:
 
-- Evolution API: `http://evolution.localhost:8080`
-- n8n: `http://n8n.localhost:8080`
+- gera as senhas e chaves locais marcadas como `CHANGE_ME`;
+- inicia PostgreSQL, Redis, Evolution, n8n e DuckDNS;
+- não inicia o Nginx antes de o certificado existir.
 
-No modo HTTP local, `N8N_SECURE_COOKIE=false` evita o bloqueio de login por cookie seguro. Ao publicar com HTTPS, altere essa opção para `true`.
+Depois de confirmar o encaminhamento das portas 80 e 443, emita o certificado e ative o Nginx:
 
-Os domínios `*.localhost` normalmente resolvem automaticamente para `127.0.0.1`. Se isso não ocorrer, acrescente ao arquivo `hosts`:
+~~~bash
+./07-configurar-https.sh
+~~~
 
-```text
-127.0.0.1 evolution.localhost n8n.localhost
-```
+Ao finalizar:
 
-No Windows, o arquivo é `C:\Windows\System32\drivers\etc\hosts`.
+- n8n: `https://noriwal.duckdns.org/`
+- MCP do n8n: `https://noriwal.duckdns.org/mcp-server/http`
+- Evolution local: `http://evolution.localhost/`
 
-## Serviços
+Se `evolution.localhost` não resolver no Windows, acrescente ao arquivo `C:\Windows\System32\drivers\etc\hosts`:
 
-```text
-Internet/host → Nginx :8080/:8443
-                    ├── evolution:8080
-                    └── n8n:8080
+~~~text
+127.0.0.1 evolution.localhost
+~~~
 
-Evolution/n8n → PostgreSQL + Redis (rede interna)
-```
+## Como a publicação funciona
 
-Evolution e n8n possuem rede de saída para webhooks e APIs externas. PostgreSQL e Redis não publicam portas e não participam dessa rede.
+~~~text
+Internet/Render -> DuckDNS -> roteador :80/:443 -> Windows/Docker -> Nginx
+                                                                  -> n8n:8080
 
-## Operação
+Evolution e n8n -> PostgreSQL + Redis na rede interna
+~~~
 
-```bash
+A porta 8080 do n8n é apenas interna. PostgreSQL 5432, Redis 6379 e n8n 8080 não são publicados no roteador.
+
+## Renovação do certificado
+
+Execute periodicamente:
+
+~~~bash
+./08-renovar-https.sh
+~~~
+
+O script verifica a renovação pelo Certbot e recarrega o Nginx. No Windows, ele pode ser agendado mensalmente pelo Agendador de Tarefas, executando o Git Bash dentro da pasta do projeto.
+
+## Estado e logs
+
+~~~bash
 ./05-status.sh
-./03-backup.sh daily
-./03-backup.sh weekly
-./03-backup.sh monthly
-./04-restaurar.sh ./backups/daily/AAAAMMDD-HHMMSS
-```
-
-Parar e iniciar diretamente:
-
-```bash
-docker compose down
-docker compose up -d
 docker compose logs -f --tail=200
-```
-
-Os volumes persistem ao executar `docker compose down`. O comando `docker compose down -v` apaga todos os bancos e dados persistentes; use somente quando realmente quiser reiniciar do zero.
+docker compose logs --tail=50 duckdns
+docker compose --profile https logs --tail=100 nginx
+~~~
 
 ## Worker e queue mode
 
 Altere `.env`:
 
-```dotenv
+~~~dotenv
 ENABLE_N8N_WORKER=true
 N8N_EXECUTIONS_MODE=queue
-```
+~~~
 
 Depois execute:
 
-```bash
+~~~bash
 docker compose --profile worker up -d
-```
+~~~
 
-## Atualização e rollback
+## Backup, restauração e atualização
 
-```bash
+~~~bash
+./03-backup.sh daily
+./03-backup.sh weekly
+./03-backup.sh monthly
+./04-restaurar.sh ./backups/daily/AAAAMMDD-HHMMSS
 ./02-atualizar.sh --evolution vX.Y.Z --n8n X.Y.Z
-./02-atualizar.sh --postgres 16.x-alpine --redis 7.x-alpine
 ./06-rollback.sh
-```
+~~~
 
-A atualização cria backup e registra o estado anterior. Não altere apenas a tag para fazer upgrade de versão principal do PostgreSQL; use dump/restore em um banco novo.
-
-## HTTPS e Certbot
-
-O modo local usa HTTP porque o Let's Encrypt não emite certificados para `localhost`. O container Certbot está disponível no perfil `ssl` para uma futura publicação com domínios reais:
-
-```bash
-docker compose --profile ssl run --rm certbot certonly \
-  --webroot -w /var/www/certbot \
-  --email voce@dominio.com --agree-tos --no-eff-email \
-  -d evolution.seudominio.com -d n8n.seudominio.com
-```
-
-Para uso público, altere os domínios e `PUBLIC_SCHEME=https` no `.env` e acrescente os blocos TLS ao template do Nginx apontando para os certificados no volume `/etc/letsencrypt`. Não use certificados públicos com os nomes `.localhost`.
+Os volumes persistem com `docker compose down`. O comando `docker compose down -v` apaga os bancos e dados persistentes e só deve ser usado quando a intenção for reiniciar tudo do zero.
 
 ## Arquivos importantes
 
-- `.env.example`: versões, domínios, portas e limites.
-- `docker-compose.yml`: toda a infraestrutura em containers.
-- `nginx/templates/default.conf.template`: proxy reverso local.
-- `postgres-init/01-create-databases.sh`: bancos/usuários separados.
-- `01-instalar.sh`: preparação e inicialização local.
+- `.env.example`: modelo público sem segredos reais.
+- `docker-compose.yml`: infraestrutura em containers.
+- `nginx/templates/default.conf.template`: proxy reverso e HTTPS.
+- `01-instalar.sh`: preparação dos serviços internos.
+- `07-configurar-https.sh`: primeira emissão e ativação do HTTPS.
+- `08-renovar-https.sh`: renovação do certificado.
+- `postgres-init/01-create-databases.sh`: criação dos bancos e usuários.
 - `02-atualizar.sh` a `06-rollback.sh`: manutenção e recuperação.
-
-Nunca publique o arquivo `.env`. O `.gitignore` já exclui segredos, backups e estados de rollback.
